@@ -1,6 +1,6 @@
 {
   "name": "claude-memory",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Persistent memory and coordination system for Claude instances. Enables cross-session knowledge retention, task delegation between instances, and multi-instance coordination.",
   "author": {
     "name": "jpathak",
@@ -15,11 +15,14 @@
     "multi-instance"
   ],
   "hooks": {
-    "PreToolCall": [
+    "SessionStart": [
       {
-        "matcher": ".*",
-        "command": "./hooks/load-memories.sh",
-        "runOnce": true
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/load-memories.sh"
+          }
+        ]
       }
     ]
   }
