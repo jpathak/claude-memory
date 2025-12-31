@@ -1,0 +1,16 @@
+version: "1.0"
+instance_id: "instance_9f8ab6c9"
+storage:
+  max_memories: 1000
+  max_tasks: 100
+  prune_after_days: 90
+  archive_instead_of_delete: true
+retrieval:
+  auto_load_recent: 10
+  auto_load_high_importance: true
+  max_context_memories: 20
+instance:
+  capabilities:
+    - coding
+    - testing
+  heartbeat_interval_seconds: 60

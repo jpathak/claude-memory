@@ -20,23 +20,24 @@ test -d .claude-memory && echo "Memory system initialized" || echo "Not initiali
 Read `.claude-memory/index.json` and display the `recent` array entries.
 
 ### Active Instances
-Read `.claude-memory/instances/activity.yaml` and show instances with recent `last_activity`.
+Read `.claude-memory-runtime/instances/activity.yaml` and show instances with recent `last_activity`.
 
 ### Pending Tasks
-Count files in `.claude-memory/tasks/pending/`:
+Count files in `.claude-memory-runtime/tasks/pending/`:
 ```bash
-ls .claude-memory/tasks/pending/*.yaml 2>/dev/null | wc -l
+ls .claude-memory-runtime/tasks/pending/*.yaml 2>/dev/null | wc -l
 ```
 
 ### Recent Activity
-Read the `recent_activity` array from `.claude-memory/instances/activity.yaml`.
+Read the `recent_activity` array from `.claude-memory-runtime/instances/activity.yaml`.
 
 ## Output Format
 
 ```
 Claude Memory Status
 ====================
-Directory: .claude-memory/
+Memory Directory: .claude-memory/ (version controlled)
+Runtime Directory: .claude-memory-runtime/ (git ignored)
 Initialized: Yes/No
 
 Recent Memories (last 5):

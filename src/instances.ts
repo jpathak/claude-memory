@@ -1,7 +1,10 @@
 /**
  * Claude Memory System - Instance Registry
  *
- * Tracks active Claude instances and enables coordination
+ * Tracks active Claude instances and enables coordination.
+ *
+ * All instance data is stored in .claude-memory-runtime/ (git ignored)
+ * because it's ephemeral instance-specific data.
  */
 
 import * as fs from 'fs/promises';
@@ -15,15 +18,14 @@ import {
   InstanceStatus,
   ActivityEntry,
   InboxMessage,
+  RUNTIME_DIR,
+  INSTANCES_SUBDIR,
+  INBOX_SUBDIR,
+  ACTIVITY_FILE,
 } from './types.js';
 
-const MEMORY_DIR = '.claude-memory';
-const INSTANCES_DIR = 'instances';
-const INBOX_DIR = 'inbox';
-const ACTIVITY_FILE = 'activity.yaml';
-
 export class InstanceManager {
-  private baseDir: string;
+  private runtimeDir: string;   // .claude-memory-runtime/ (git ignored)
   private instanceId: string;
   private machine: string;
   private capabilities: string[];
@@ -36,11 +38,18 @@ export class InstanceManager {
     capabilities: string[] = ['coding'],
     tool: string = 'claude-code-cli'
   ) {
-    this.baseDir = path.join(baseDir, MEMORY_DIR);
+    this.runtimeDir = path.join(baseDir, RUNTIME_DIR);
     this.instanceId = instanceId || `instance_${uuidv4().slice(0, 8)}`;
     this.machine = os.hostname();
     this.capabilities = capabilities;
     this.tool = tool;
+  }
+
+  /**
+   * Get the runtime directory path
+   */
+  getRuntimeDir(): string {
+    return this.runtimeDir;
   }
 
   /**
@@ -289,7 +298,7 @@ export class InstanceManager {
     relatedTask?: string,
     relatedMemory?: string
   ): Promise<InboxMessage> {
-    const inboxDir = path.join(this.baseDir, INBOX_DIR);
+    const inboxDir = path.join(this.runtimeDir, INBOX_SUBDIR);
     const id = `msg_${uuidv4().slice(0, 12)}`;
     const now = new Date().toISOString();
 
@@ -316,7 +325,7 @@ export class InstanceManager {
    * Get unread messages for this instance
    */
   async getUnreadMessages(): Promise<InboxMessage[]> {
-    const inboxDir = path.join(this.baseDir, INBOX_DIR);
+    const inboxDir = path.join(this.runtimeDir, INBOX_SUBDIR);
     const messages: InboxMessage[] = [];
 
     try {
@@ -345,7 +354,7 @@ export class InstanceManager {
    * Mark a message as read
    */
   async markMessageRead(messageId: string): Promise<void> {
-    const inboxDir = path.join(this.baseDir, INBOX_DIR);
+    const inboxDir = path.join(this.runtimeDir, INBOX_SUBDIR);
 
     try {
       const files = await fs.readdir(inboxDir);
@@ -370,7 +379,7 @@ export class InstanceManager {
    * Clean up old messages
    */
   async cleanupOldMessages(maxAgeDays: number = 7): Promise<number> {
-    const inboxDir = path.join(this.baseDir, INBOX_DIR);
+    const inboxDir = path.join(this.runtimeDir, INBOX_SUBDIR);
     const cutoff = Date.now() - maxAgeDays * 24 * 60 * 60 * 1000;
     let cleaned = 0;
 
@@ -414,7 +423,7 @@ export class InstanceManager {
     const pendingWaits = previousInstance.waiting_for?.map(w => w.task_id) || [];
 
     // Get unread messages for previous instance
-    const inboxDir = path.join(this.baseDir, INBOX_DIR);
+    const inboxDir = path.join(this.runtimeDir, INBOX_SUBDIR);
     const unreadMessages: InboxMessage[] = [];
 
     try {
@@ -449,7 +458,7 @@ export class InstanceManager {
   // Private helper methods
 
   private async loadRegistry(): Promise<InstanceRegistry> {
-    const registryPath = path.join(this.baseDir, INSTANCES_DIR, ACTIVITY_FILE);
+    const registryPath = path.join(this.runtimeDir, INSTANCES_SUBDIR, ACTIVITY_FILE);
 
     try {
       const content = await fs.readFile(registryPath, 'utf-8');
@@ -460,7 +469,7 @@ export class InstanceManager {
   }
 
   private async saveRegistry(registry: InstanceRegistry): Promise<void> {
-    const instancesDir = path.join(this.baseDir, INSTANCES_DIR);
+    const instancesDir = path.join(this.runtimeDir, INSTANCES_SUBDIR);
     await fs.mkdir(instancesDir, { recursive: true });
 
     const registryPath = path.join(instancesDir, ACTIVITY_FILE);

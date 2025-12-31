@@ -1,11 +1,13 @@
 ---
 name: claude-memory
-description: Use this skill when you need to store or recall persistent memories across sessions, delegate tasks to other Claude instances, or coordinate with other instances working on this project. Activate when users mention remembering decisions, tracking what happened, coordinating with other Claude sessions, or when you make important decisions that should persist.
+description: "IMPORTANT: Activate this skill IMMEDIATELY at the start of every session before any other action. Check .claude-memory/ for stored memories and apply them (especially preferences like git email, coding style, etc). Also use when: storing new memories, recalling past decisions, user says 'remember this', delegating to other instances, or coordinating with other Claude sessions."
 ---
 
 # Claude Memory System
 
-A persistent memory and coordination system that lives in `.claude-memory/` in the project directory.
+A persistent memory and coordination system using two directories:
+- `.claude-memory/` - **Version controlled** project knowledge (memories, completed tasks, config)
+- `.claude-memory-runtime/` - **Git ignored** instance-specific runtime data (active instances, inbox, pending tasks)
 
 ## When to Use This Skill
 
@@ -16,18 +18,32 @@ A persistent memory and coordination system that lives in `.claude-memory/` in t
 - You need to delegate work to another Claude instance
 - You want to check what decisions were made previously
 
+## On Startup - IMPORTANT
+
+**Always check for and load memories when starting a session:**
+
+1. Check if `.claude-memory/` exists
+2. Read `index.json` to find high-importance memories
+3. Load memories from `memories/` especially those with importance >= 0.7
+4. Apply preferences immediately (e.g., git email, coding style)
+
 ## Quick Start
 
 ### Check if Memory System Exists
 
 ```bash
 ls -la .claude-memory/
+ls -la .claude-memory-runtime/
 ```
 
-If it doesn't exist, create it:
+If they don't exist, create them:
 
 ```bash
-mkdir -p .claude-memory/{memories,tasks/{pending,in_progress,completed,failed},instances,inbox,artifacts,archive}
+# Version controlled directory
+mkdir -p .claude-memory/{memories,completed,archive}
+
+# Git ignored runtime directory
+mkdir -p .claude-memory-runtime/{instances,inbox,tasks/{pending,in_progress},failed,artifacts}
 ```
 
 Then create the initial files (see Setup section below).
@@ -70,10 +86,10 @@ Then read specific memory files based on IDs found in the index.
 
 ### Delegate a Task
 
-Create a task file in `.claude-memory/tasks/pending/`:
+Create a task file in `.claude-memory-runtime/tasks/pending/`:
 
 ```yaml
-# .claude-memory/tasks/pending/task_xyz789.yaml
+# .claude-memory-runtime/tasks/pending/task_xyz789.yaml
 id: "task_xyz789"
 created_at: "2024-01-15T14:00:00Z"
 created_by:
@@ -97,6 +113,8 @@ status_history:
     by: "your-instance-id"
 ```
 
+When completed, the task moves to `.claude-memory/completed/` (version controlled).
+
 ## Memory Types
 
 | Type | When to Use | Example |
@@ -110,23 +128,31 @@ status_history:
 
 ## Directory Structure
 
+The system uses **two directories** to separate version-controlled project knowledge from ephemeral instance data:
+
+### .claude-memory/ (VERSION CONTROLLED)
 ```
 .claude-memory/
 ├── README.md           # Self-describing docs
-├── config.yaml         # System settings
+├── config.yaml         # Project settings
 ├── index.json          # Fast lookups by type, tag, file
 ├── timeline.json       # Chronological view
-├── memories/           # Memory YAML files
+├── memories/           # Memory YAML files (decisions, facts, preferences)
+├── completed/          # Completed tasks with results
+└── archive/            # Archived memories
+```
+
+### .claude-memory-runtime/ (GIT IGNORED)
+```
+.claude-memory-runtime/
+├── instances/
+│   └── activity.yaml   # Active instances registry
+├── inbox/              # Direct messages between instances
 ├── tasks/
 │   ├── pending/        # Unclaimed tasks
-│   ├── in_progress/    # Being worked on
-│   ├── completed/      # Done with results
-│   └── failed/         # Failed tasks
-├── instances/
-│   └── activity.yaml   # Who's active, what they're doing
-├── inbox/              # Direct messages between instances
-├── artifacts/          # Files from tasks (screenshots, etc.)
-└── archive/            # Old/pruned memories
+│   └── in_progress/    # Tasks being worked on
+├── failed/             # Failed tasks
+└── artifacts/          # Temp files from tasks
 ```
 
 ## Conflict Resolution
@@ -138,7 +164,7 @@ When memories conflict:
 
 ## Setup (If Not Initialized)
 
-Create `index.json`:
+Create `index.json` in `.claude-memory/`:
 
 ```json
 {
@@ -164,7 +190,7 @@ Create `index.json`:
 }
 ```
 
-Create `instances/activity.yaml`:
+Create `instances/activity.yaml` in `.claude-memory-runtime/`:
 
 ```yaml
 instances: {}
@@ -177,8 +203,10 @@ recent_activity: []
 
 ## Best Practices
 
-1. **Store memories proactively** - Don't wait to be asked
-2. **Use appropriate importance** - 0.9 for critical decisions, 0.3 for minor notes
-3. **Link related memories** - Use `links.related_to` and `links.supersedes`
-4. **Update the index** - After creating a memory, add its ID to `index.json`
-5. **Tag consistently** - Use lowercase, common tags across memories
+1. **Load memories on startup** - Always check for and apply high-importance memories
+2. **Store memories proactively** - Don't wait to be asked
+3. **Use appropriate importance** - 0.9 for critical decisions/preferences, 0.3 for minor notes
+4. **Link related memories** - Use `links.related_to` and `links.supersedes`
+5. **Update the index** - After creating a memory, add its ID to `index.json`
+6. **Tag consistently** - Use lowercase, common tags across memories
+7. **Commit memory changes** - Memory files should be committed with related code changes

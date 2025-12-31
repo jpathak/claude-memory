@@ -1,7 +1,13 @@
 /**
  * Claude Memory System - Task Delegation
  *
- * Handles task creation, claiming, completion, and async waiting
+ * Handles task creation, claiming, completion, and async waiting.
+ *
+ * Task directories are split:
+ * - .claude-memory/completed/ (version controlled) - completed tasks with results
+ * - .claude-memory-runtime/tasks/pending/ (git ignored) - pending tasks
+ * - .claude-memory-runtime/tasks/in_progress/ (git ignored) - in-progress tasks
+ * - .claude-memory-runtime/failed/ (git ignored) - failed tasks
  */
 
 import * as fs from 'fs/promises';
@@ -14,20 +20,42 @@ import {
   CreateTaskInput,
   TaskResult,
   StatusHistoryEntry,
+  MEMORY_DIR,
+  RUNTIME_DIR,
+  COMPLETED_SUBDIR,
+  TASKS_SUBDIR,
+  PENDING_SUBDIR,
+  IN_PROGRESS_SUBDIR,
+  FAILED_SUBDIR,
 } from './types.js';
 
-const MEMORY_DIR = '.claude-memory';
-const TASKS_DIR = 'tasks';
-
 export class TaskManager {
-  private baseDir: string;
+  private memoryDir: string;    // .claude-memory/ (VCS)
+  private runtimeDir: string;   // .claude-memory-runtime/ (git ignored)
   private instanceId: string;
   private machine: string;
 
   constructor(baseDir: string = process.cwd(), instanceId: string, machine?: string) {
-    this.baseDir = path.join(baseDir, MEMORY_DIR, TASKS_DIR);
+    this.memoryDir = path.join(baseDir, MEMORY_DIR);
+    this.runtimeDir = path.join(baseDir, RUNTIME_DIR);
     this.instanceId = instanceId;
     this.machine = machine || 'unknown';
+  }
+
+  /**
+   * Get the directory path for a task status
+   */
+  private getStatusDir(status: 'pending' | 'in_progress' | 'completed' | 'failed'): string {
+    switch (status) {
+      case 'pending':
+        return path.join(this.runtimeDir, TASKS_SUBDIR, PENDING_SUBDIR);
+      case 'in_progress':
+        return path.join(this.runtimeDir, TASKS_SUBDIR, IN_PROGRESS_SUBDIR);
+      case 'completed':
+        return path.join(this.memoryDir, COMPLETED_SUBDIR);
+      case 'failed':
+        return path.join(this.runtimeDir, FAILED_SUBDIR);
+    }
   }
 
   /**
@@ -320,7 +348,7 @@ export class TaskManager {
   // Private helper methods
 
   private async getTasksInStatus(status: 'pending' | 'in_progress' | 'completed' | 'failed'): Promise<Task[]> {
-    const statusDir = path.join(this.baseDir, status);
+    const statusDir = this.getStatusDir(status);
     try {
       const files = await fs.readdir(statusDir);
       const tasks: Task[] = [];
@@ -339,7 +367,7 @@ export class TaskManager {
 
   private async findTask(taskId: string): Promise<Task | null> {
     for (const status of ['pending', 'in_progress', 'completed', 'failed'] as const) {
-      const statusDir = path.join(this.baseDir, status);
+      const statusDir = this.getStatusDir(status);
       const taskPath = path.join(statusDir, `${taskId}.yaml`);
 
       try {
@@ -354,13 +382,14 @@ export class TaskManager {
   }
 
   private async saveTask(task: Task, status: 'pending' | 'in_progress' | 'completed' | 'failed'): Promise<void> {
-    const statusDir = path.join(this.baseDir, status);
+    const statusDir = this.getStatusDir(status);
+    await fs.mkdir(statusDir, { recursive: true });
     const taskPath = path.join(statusDir, `${task.id}.yaml`);
     await fs.writeFile(taskPath, YAML.stringify(task), 'utf-8');
   }
 
   private async deleteTask(taskId: string, status: 'pending' | 'in_progress' | 'completed' | 'failed'): Promise<void> {
-    const statusDir = path.join(this.baseDir, status);
+    const statusDir = this.getStatusDir(status);
     const taskPath = path.join(statusDir, `${taskId}.yaml`);
     try {
       await fs.unlink(taskPath);

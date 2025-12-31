@@ -5,16 +5,22 @@ description: Initialize the Claude Memory system in the current project director
 
 # Initialize Claude Memory
 
-Create the `.claude-memory/` directory structure and initial files for persistent memory storage.
+Create the memory system directory structure:
+- `.claude-memory/` - Version controlled project knowledge
+- `.claude-memory-runtime/` - Git ignored instance runtime data
 
 ## Steps
 
 1. Create the directory structure:
 ```bash
-mkdir -p .claude-memory/{memories,tasks/{pending,in_progress,completed,failed},instances,inbox,artifacts,archive}
+# Version controlled directories
+mkdir -p .claude-memory/{memories,completed,archive}
+
+# Git ignored runtime directories
+mkdir -p .claude-memory-runtime/{instances,inbox,tasks/{pending,in_progress},failed,artifacts}
 ```
 
-2. Create `index.json`:
+2. Create `index.json` in `.claude-memory/`:
 ```json
 {
   "version": "1.0",
@@ -47,7 +53,7 @@ mkdir -p .claude-memory/{memories,tasks/{pending,in_progress,completed,failed},i
 }
 ```
 
-4. Create `config.yaml`:
+4. Create `config.yaml` in `.claude-memory/`:
 ```yaml
 version: "1.0"
 instance_id: "{{INSTANCE_ID}}"
@@ -67,7 +73,7 @@ instance:
   heartbeat_interval_seconds: 60
 ```
 
-5. Create `instances/activity.yaml`:
+5. Create `instances/activity.yaml` in `.claude-memory-runtime/`:
 ```yaml
 instances: {}
 heartbeat:
@@ -77,7 +83,12 @@ heartbeat:
 recent_activity: []
 ```
 
-6. Create `README.md` with system documentation (see skill for full content)
+6. Create `README.md` in `.claude-memory/` with system documentation (see skill for full content)
+
+7. Add `.claude-memory-runtime/` to `.gitignore`:
+```bash
+echo ".claude-memory-runtime/" >> .gitignore
+```
 
 Replace `{{TIMESTAMP}}` with current ISO 8601 timestamp and `{{INSTANCE_ID}}` with a unique identifier like `instance_` followed by 8 random characters.
 
@@ -86,4 +97,5 @@ Replace `{{TIMESTAMP}}` with current ISO 8601 timestamp and `{{INSTANCE_ID}}` wi
 After initialization, confirm by listing the structure:
 ```bash
 ls -la .claude-memory/
+ls -la .claude-memory-runtime/
 ```

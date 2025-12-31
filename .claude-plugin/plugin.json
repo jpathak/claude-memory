@@ -13,5 +13,14 @@
     "persistence",
     "coordination",
     "multi-instance"
-  ]
+  ],
+  "hooks": {
+    "PreToolCall": [
+      {
+        "matcher": ".*",
+        "command": "./hooks/load-memories.sh",
+        "runOnce": true
+      }
+    ]
+  }
 }

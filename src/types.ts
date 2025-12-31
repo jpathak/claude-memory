@@ -2,6 +2,32 @@
  * Claude Memory System - Type Definitions
  */
 
+// Directory constants
+// .claude-memory/ is version controlled (project knowledge)
+// .claude-memory-runtime/ is git ignored (instance-specific runtime data)
+export const MEMORY_DIR = '.claude-memory';
+export const RUNTIME_DIR = '.claude-memory-runtime';
+
+// Subdirectories in .claude-memory/ (version controlled)
+export const MEMORIES_SUBDIR = 'memories';
+export const COMPLETED_SUBDIR = 'completed';  // Completed tasks
+export const ARCHIVE_SUBDIR = 'archive';
+
+// Subdirectories in .claude-memory-runtime/ (git ignored)
+export const INSTANCES_SUBDIR = 'instances';
+export const INBOX_SUBDIR = 'inbox';
+export const TASKS_SUBDIR = 'tasks';
+export const PENDING_SUBDIR = 'pending';
+export const IN_PROGRESS_SUBDIR = 'in_progress';
+export const FAILED_SUBDIR = 'failed';
+export const ARTIFACTS_SUBDIR = 'artifacts';
+
+// File names
+export const INDEX_FILE = 'index.json';
+export const TIMELINE_FILE = 'timeline.json';
+export const CONFIG_FILE = 'config.yaml';
+export const ACTIVITY_FILE = 'activity.yaml';
+
 // Memory types that can be stored
 export type MemoryType =
   | 'decision'    // A choice made between alternatives

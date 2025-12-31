@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "last_updated": "2025-12-31T20:27:29Z",
+  "by_type": {
+    "decision": [],
+    "event": [],
+    "fact": [],
+    "preference": ["7a36d4b7079f"],
+    "context": [],
+    "conclusion": []
+  },
+  "by_tag": {
+    "git": ["7a36d4b7079f"],
+    "email": ["7a36d4b7079f"],
+    "commits": ["7a36d4b7079f"],
+    "preferences": ["7a36d4b7079f"]
+  },
+  "by_file": {},
+  "by_status": {
+    "active": ["7a36d4b7079f"],
+    "superseded": [],
+    "archived": []
+  },
+  "recent": ["7a36d4b7079f"],
+  "high_importance": ["7a36d4b7079f"]
+}

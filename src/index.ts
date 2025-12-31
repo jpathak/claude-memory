@@ -2,6 +2,10 @@
  * Claude Memory System
  *
  * A distributed memory and coordination system for Claude instances.
+ *
+ * Directory structure:
+ * - .claude-memory/ (version controlled) - memories, completed tasks, config
+ * - .claude-memory-runtime/ (git ignored) - instances, inbox, pending tasks
  */
 
 export * from './types.js';
@@ -79,10 +83,17 @@ export class ClaudeMemory {
   }
 
   /**
-   * Get the memory directory path
+   * Get the memory directory path (.claude-memory/ - version controlled)
    */
   getMemoryDir(): string {
     return this.store.getMemoryDir();
+  }
+
+  /**
+   * Get the runtime directory path (.claude-memory-runtime/ - git ignored)
+   */
+  getRuntimeDir(): string {
+    return this.store.getRuntimeDir();
   }
 
   // ============ Memory Operations ============

@@ -26,18 +26,29 @@ describe('MemoryStore', () => {
     it('should create directory structure', async () => {
       await store.init();
 
+      // Check VCS directory (.claude-memory/)
       const memoryDir = store.getMemoryDir();
-      const exists = await fs.access(memoryDir).then(() => true).catch(() => false);
-      expect(exists).toBe(true);
+      expect(await fs.access(memoryDir).then(() => true).catch(() => false)).toBe(true);
 
-      // Check subdirectories
+      // Check VCS subdirectories
       const memoriesDir = path.join(memoryDir, 'memories');
-      const tasksDir = path.join(memoryDir, 'tasks');
+      const completedDir = path.join(memoryDir, 'completed');
       const indexFile = path.join(memoryDir, 'index.json');
 
       expect(await fs.access(memoriesDir).then(() => true).catch(() => false)).toBe(true);
-      expect(await fs.access(tasksDir).then(() => true).catch(() => false)).toBe(true);
+      expect(await fs.access(completedDir).then(() => true).catch(() => false)).toBe(true);
       expect(await fs.access(indexFile).then(() => true).catch(() => false)).toBe(true);
+
+      // Check runtime directory (.claude-memory-runtime/)
+      const runtimeDir = store.getRuntimeDir();
+      expect(await fs.access(runtimeDir).then(() => true).catch(() => false)).toBe(true);
+
+      // Check runtime subdirectories
+      const tasksDir = path.join(runtimeDir, 'tasks');
+      const instancesDir = path.join(runtimeDir, 'instances');
+
+      expect(await fs.access(tasksDir).then(() => true).catch(() => false)).toBe(true);
+      expect(await fs.access(instancesDir).then(() => true).catch(() => false)).toBe(true);
     });
 
     it('should create README', async () => {

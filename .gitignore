@@ -25,3 +25,6 @@ coverage/
 # Lock files (optional - uncomment if you don't want to track)
 # package-lock.json
 CLAUDE.md
+
+# Claude Memory runtime data (instance-specific, not version controlled)
+.claude-memory-runtime/

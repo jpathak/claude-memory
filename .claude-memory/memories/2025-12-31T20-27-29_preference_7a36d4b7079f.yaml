@@ -1,0 +1,19 @@
+id: "7a36d4b7079f"
+type: "preference"
+status: "active"
+timestamp: "2025-12-31T20:27:29Z"
+instance_id: "instance_9f8ab6c9"
+title: "Git commits should use me@jpathak.com email"
+summary: "User prefers all git commits to be made with their email address: me@jpathak.com"
+details: |
+  When making git commits, always configure or use the email me@jpathak.com
+  for the commit author. This applies to all repositories.
+tags:
+  - git
+  - email
+  - commits
+  - preferences
+importance: 0.9
+confidence: 1.0
+context:
+  related_files: []

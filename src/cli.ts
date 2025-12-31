@@ -34,7 +34,8 @@ program
 
     await memory.init();
     console.log(chalk.green('✓ Claude Memory initialized'));
-    console.log(chalk.dim(`  Directory: ${memory.getMemoryDir()}`));
+    console.log(chalk.dim(`  Memory dir: ${memory.getMemoryDir()} (version controlled)`));
+    console.log(chalk.dim(`  Runtime dir: ${memory.getRuntimeDir()} (git ignored)`));
     console.log(chalk.dim(`  Instance ID: ${memory.getInstanceId()}`));
     await memory.shutdown();
   });
@@ -345,7 +346,9 @@ program
 
     console.log(chalk.bold('Claude Memory Status\n'));
     console.log(`Instance ID: ${chalk.cyan(memory.getInstanceId())}`);
-    console.log(`Directory: ${chalk.dim(memory.getMemoryDir())}`);
+    console.log(`Memory dir: ${chalk.dim(memory.getMemoryDir())} ${chalk.green('(VCS)')}`);
+    console.log(`Runtime dir: ${chalk.dim(memory.getRuntimeDir())} ${chalk.yellow('(ignored)')}`);
+
 
     // Active instances
     const instances = await memory.getActiveInstances();

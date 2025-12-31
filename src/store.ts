@@ -1,7 +1,11 @@
 /**
  * Claude Memory System - Storage Layer
  *
- * Handles reading/writing memories to the filesystem
+ * Handles reading/writing memories to the filesystem.
+ *
+ * Directory structure:
+ * - .claude-memory/ (version controlled) - memories, completed tasks, archive
+ * - .claude-memory-runtime/ (git ignored) - instances, inbox, pending/in-progress tasks
  */
 
 import * as fs from 'fs/promises';
@@ -18,16 +22,19 @@ import {
   CreateMemoryInput,
   MemoryQuery,
   MemoryStatus,
+  MEMORY_DIR,
+  RUNTIME_DIR,
+  MEMORIES_SUBDIR,
+  COMPLETED_SUBDIR,
+  ARCHIVE_SUBDIR,
+  INDEX_FILE,
+  TIMELINE_FILE,
+  CONFIG_FILE,
 } from './types.js';
 
-const MEMORY_DIR = '.claude-memory';
-const MEMORIES_SUBDIR = 'memories';
-const INDEX_FILE = 'index.json';
-const TIMELINE_FILE = 'timeline.json';
-const CONFIG_FILE = 'config.yaml';
-
 export class MemoryStore {
-  private baseDir: string;
+  private baseDir: string;      // .claude-memory/ (version controlled)
+  private runtimeDir: string;   // .claude-memory-runtime/ (git ignored)
   private instanceId: string;
   private index: MemoryIndex | null = null;
   private timeline: Timeline | null = null;
@@ -35,7 +42,15 @@ export class MemoryStore {
 
   constructor(baseDir: string = process.cwd(), instanceId?: string) {
     this.baseDir = path.join(baseDir, MEMORY_DIR);
+    this.runtimeDir = path.join(baseDir, RUNTIME_DIR);
     this.instanceId = instanceId || `instance_${uuidv4().slice(0, 8)}`;
+  }
+
+  /**
+   * Get the runtime directory path (git ignored)
+   */
+  getRuntimeDir(): string {
+    return this.runtimeDir;
   }
 
   /**
@@ -53,19 +68,25 @@ export class MemoryStore {
   }
 
   /**
-   * Initialize the memory system in the current directory
+   * Initialize the memory system in the current directory.
+   *
+   * Creates two directory structures:
+   * - .claude-memory/ (version controlled) - memories, completed tasks, config
+   * - .claude-memory-runtime/ (git ignored) - instances, inbox, pending tasks
    */
   async init(): Promise<void> {
-    // Create directory structure
+    // Create version-controlled directories (.claude-memory/)
     await fs.mkdir(path.join(this.baseDir, MEMORIES_SUBDIR), { recursive: true });
-    await fs.mkdir(path.join(this.baseDir, 'tasks', 'pending'), { recursive: true });
-    await fs.mkdir(path.join(this.baseDir, 'tasks', 'in_progress'), { recursive: true });
-    await fs.mkdir(path.join(this.baseDir, 'tasks', 'completed'), { recursive: true });
-    await fs.mkdir(path.join(this.baseDir, 'tasks', 'failed'), { recursive: true });
-    await fs.mkdir(path.join(this.baseDir, 'instances'), { recursive: true });
-    await fs.mkdir(path.join(this.baseDir, 'inbox'), { recursive: true });
-    await fs.mkdir(path.join(this.baseDir, 'artifacts'), { recursive: true });
-    await fs.mkdir(path.join(this.baseDir, 'archive'), { recursive: true });
+    await fs.mkdir(path.join(this.baseDir, COMPLETED_SUBDIR), { recursive: true });
+    await fs.mkdir(path.join(this.baseDir, ARCHIVE_SUBDIR), { recursive: true });
+
+    // Create runtime directories (.claude-memory-runtime/) - git ignored
+    await fs.mkdir(path.join(this.runtimeDir, 'instances'), { recursive: true });
+    await fs.mkdir(path.join(this.runtimeDir, 'inbox'), { recursive: true });
+    await fs.mkdir(path.join(this.runtimeDir, 'tasks', 'pending'), { recursive: true });
+    await fs.mkdir(path.join(this.runtimeDir, 'tasks', 'in_progress'), { recursive: true });
+    await fs.mkdir(path.join(this.runtimeDir, 'failed'), { recursive: true });
+    await fs.mkdir(path.join(this.runtimeDir, 'artifacts'), { recursive: true });
 
     // Initialize index if it doesn't exist
     if (!await this.fileExists(path.join(this.baseDir, INDEX_FILE))) {
@@ -82,8 +103,36 @@ export class MemoryStore {
       await this.saveConfig(this.createDefaultConfig());
     }
 
-    // Create README
+    // Create README in version-controlled directory
     await this.createReadme();
+
+    // Create .gitignore in parent directory if it doesn't exist
+    await this.ensureGitignore();
+  }
+
+  /**
+   * Ensure .claude-memory-runtime/ is in .gitignore
+   */
+  private async ensureGitignore(): Promise<void> {
+    const parentDir = path.dirname(this.baseDir);
+    const gitignorePath = path.join(parentDir, '.gitignore');
+    const runtimeEntry = RUNTIME_DIR + '/';
+
+    try {
+      let content = '';
+      if (await this.fileExists(gitignorePath)) {
+        content = await fs.readFile(gitignorePath, 'utf-8');
+        if (content.includes(runtimeEntry)) {
+          return; // Already in .gitignore
+        }
+      }
+
+      // Append runtime directory to .gitignore
+      const newContent = content.trim() + '\n\n# Claude Memory runtime data (instance-specific)\n' + runtimeEntry + '\n';
+      await fs.writeFile(gitignorePath, newContent, 'utf-8');
+    } catch {
+      // Ignore errors - .gitignore might not be writable
+    }
   }
 
   /**
@@ -560,21 +609,52 @@ export class MemoryStore {
 
     const readme = `# Claude Memory System
 
-This directory contains a shared memory and coordination system for Claude instances working on this project.
+This directory contains the **version-controlled** shared memory for Claude instances working on this project.
+
+## Directory Structure
+
+The memory system uses two directories:
+
+### .claude-memory/ (this directory - VERSION CONTROLLED)
+Contains project knowledge that should be shared across all developers and sessions:
+\`\`\`
+.claude-memory/
+├── README.md           <- You are here
+├── config.yaml         <- Project settings
+├── index.json          <- Fast memory lookups
+├── timeline.json       <- Chronological view of events
+├── memories/           <- Persistent knowledge (decisions, facts, preferences)
+├── completed/          <- Completed tasks with results
+└── archive/            <- Archived memories
+\`\`\`
+
+### .claude-memory-runtime/ (GIT IGNORED)
+Contains instance-specific runtime data:
+\`\`\`
+.claude-memory-runtime/
+├── instances/          <- Active Claude instances registry
+│   └── activity.yaml   <- Who's working, what they're doing
+├── inbox/              <- Direct messages between instances
+├── tasks/
+│   ├── pending/        <- Unclaimed tasks
+│   └── in_progress/    <- Tasks being worked on
+├── failed/             <- Failed tasks
+└── artifacts/          <- Temporary files from tasks
+\`\`\`
 
 ## For New Claude Instances
 
-Welcome! You're now part of a distributed team of Claude instances. Here's how to participate:
+Welcome! Here's how to participate:
 
 ### On Startup
-1. Read this file (you're doing that now)
-2. Check \`instances/activity.yaml\` to see who else is working
-3. Register yourself by updating \`instances/activity.yaml\`
-4. Check \`tasks/pending/\` for any tasks you can help with
-5. Load relevant memories from \`memories/\` based on your task
+1. Read this file and check \`index.json\` for important memories
+2. Load high-importance memories from \`memories/\`
+3. Check \`.claude-memory-runtime/instances/activity.yaml\` for active instances
+4. Register yourself in the activity file
+5. Check \`.claude-memory-runtime/tasks/pending/\` for claimable tasks
 
 ### Storing Memories
-When you learn something important, create a memory using the memory system. Store a memory when:
+Create a memory when:
 - A significant decision is made
 - A bug root cause is found
 - User expresses a preference
@@ -584,59 +664,36 @@ When you learn something important, create a memory using the memory system. Sto
 Memory types: \`decision\`, \`event\`, \`fact\`, \`preference\`, \`context\`, \`conclusion\`
 
 ### Task Delegation
-To request another instance do something:
-1. Create a task file in \`tasks/pending/\`
+To delegate work:
+1. Create a task in \`.claude-memory-runtime/tasks/pending/\`
 2. Specify required capabilities or target instance
-3. Poll \`tasks/completed/\` or check your inbox for results
+3. Check \`.claude-memory/completed/\` for results
 
 To claim a task:
-1. Check \`tasks/pending/\` for tasks matching your capabilities
-2. Move the file to \`tasks/in_progress/\`
-3. Update status and claimed_by fields
-4. Complete the work
-5. Move to \`tasks/completed/\` with results
-
-### Directory Structure
-\`\`\`
-.claude-memory/
-├── README.md           <- You are here
-├── config.yaml         <- System settings
-├── memories/           <- Persistent knowledge
-├── tasks/              <- Task delegation queue
-│   ├── pending/        <- Unclaimed tasks
-│   ├── in_progress/    <- Being worked on
-│   ├── completed/      <- Done (with results)
-│   └── failed/         <- Failed tasks
-├── instances/          <- Who's active
-├── inbox/              <- Direct messages
-├── artifacts/          <- Files from tasks
-├── archive/            <- Old/pruned memories
-├── index.json          <- Fast lookup
-└── timeline.json       <- Chronological view
-\`\`\`
+1. Check \`pending/\` for tasks matching your capabilities
+2. Move to \`in_progress/\`, update claimed_by
+3. Complete work, move to \`.claude-memory/completed/\` with results
 
 ### Capabilities
-Common capabilities to register:
-- \`coding\` - Can write/modify code
-- \`browser_testing\` - Has browser access
-- \`visual_testing\` - Can view screenshots
-- \`git\` - Can perform git operations
-- \`deployment\` - Can deploy to environments
-- \`research\` - Can do web research
+- \`coding\` - Write/modify code
+- \`browser_testing\` - Browser access
+- \`visual_testing\` - View screenshots
+- \`git\` - Git operations
+- \`deployment\` - Deploy to environments
+- \`research\` - Web research
 
 ### Conflict Resolution
-When you find conflicting information:
-1. Check the \`supersedes\` links in memories
-2. Use timestamps to determine recency
-3. Read surrounding memories for context (via timeline)
+1. Check \`supersedes\` links in memories
+2. Use timestamps - more recent wins
+3. Read timeline for context
 4. The most recent non-superseded memory wins
 
 ### Best Practices
-1. Update your activity status regularly
-2. Complete or hand off tasks before going offline
-3. Write clear, descriptive memories
-4. Link related memories together
-5. Use appropriate importance/confidence scores
+1. **Always check memories on startup** - especially high-importance ones
+2. Store preferences immediately when users express them
+3. Link related memories together
+4. Use appropriate importance scores (0.9 for critical, 0.3 for minor)
+5. Commit memory changes along with code changes
 `;
 
     await fs.writeFile(readmePath, readme, 'utf-8');
