@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test output
+coverage/
+*.log
+
+# Environment
+.env
+.env.local
+
+# Lock files (optional - uncomment if you don't want to track)
+# package-lock.json
+CLAUDE.md

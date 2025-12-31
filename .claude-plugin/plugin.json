@@ -1,0 +1,17 @@
+{
+  "name": "claude-memory",
+  "version": "0.1.0",
+  "description": "Persistent memory and coordination system for Claude instances. Enables cross-session knowledge retention, task delegation between instances, and multi-instance coordination.",
+  "author": {
+    "name": "jpathak",
+    "email": ""
+  },
+  "license": "MIT",
+  "repository": "https://github.com/jpathak/claude-memory",
+  "keywords": [
+    "memory",
+    "persistence",
+    "coordination",
+    "multi-instance"
+  ]
+}
