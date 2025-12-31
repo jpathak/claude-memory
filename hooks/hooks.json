@@ -1,0 +1,15 @@
+{
+  "description": "Load memories from .claude-memory at session start",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/load-memories.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
