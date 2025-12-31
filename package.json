@@ -1,6 +1,6 @@
 {
   "name": "claude-memory",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Distributed memory and coordination system for Claude instances",
   "type": "module",
   "main": "dist/index.js",
