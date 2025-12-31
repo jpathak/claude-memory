@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "claude-memory",
+  "description": "Claude Code plugin for persistent memory and multi-instance coordination",
+  "version": "0.1.0",
+  "owner": {
+    "name": "jpathak",
+    "email": ""
+  },
+  "plugins": [
+    {
+      "name": "claude-memory",
+      "description": "Persistent memory and coordination system for Claude instances. Enables cross-session knowledge retention, task delegation between instances, and multi-instance coordination.",
+      "version": "0.1.0",
+      "path": "."
+    }
+  ]
+}
