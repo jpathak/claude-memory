@@ -5,208 +5,174 @@ description: "IMPORTANT: Activate this skill IMMEDIATELY at the start of every s
 
 # Claude Memory System
 
-A persistent memory and coordination system using two directories:
-- `.claude-memory/` - **Version controlled** project knowledge (memories, completed tasks, config)
-- `.claude-memory-runtime/` - **Git ignored** instance-specific runtime data (active instances, inbox, pending tasks)
+A persistent memory and coordination system for Claude instances. This skill enables **automatic** memory storage and recall across sessions.
 
-## When to Use This Skill
+## CRITICAL: Automatic Behavior
 
-- User says "remember this" or "don't forget"
-- You make a significant decision worth preserving
-- You discover important facts about the codebase
-- User expresses preferences (coding style, tools, patterns)
-- You need to delegate work to another Claude instance
-- You want to check what decisions were made previously
+### AUTO-STORE: When to Store Memories (DO THIS AUTOMATICALLY)
 
-## On Startup - IMPORTANT
+**You MUST automatically store a memory when ANY of these triggers occur:**
 
-**Always check for and load memories when starting a session:**
+1. **Explicit triggers** - User says:
+   - "remember this", "remember that", "don't forget"
+   - "always do X", "never do Y", "I prefer X"
+   - "from now on", "going forward", "in the future"
+   - "keep in mind", "note that", "important:"
 
-1. Check if `.claude-memory/` exists
-2. Read `index.json` to find high-importance memories
-3. Load memories from `memories/` especially those with importance >= 0.7
-4. Apply preferences immediately (e.g., git email, coding style)
+2. **Implicit triggers** - You detect:
+   - User expresses a preference (coding style, tools, naming conventions)
+   - A significant architectural or design decision is made
+   - User corrects you ("no, do it this way instead")
+   - Project-specific facts are discovered (API limits, env requirements)
+   - Important context about the domain (compliance requirements, business rules)
+   - User shares their email, name, or identity preferences
 
-## Quick Start
+3. **Decision points** - When you and the user:
+   - Choose between multiple options
+   - Settle on an approach after discussion
+   - Establish a pattern to follow
 
-### Check if Memory System Exists
+**IMMEDIATELY run the CLI when a trigger is detected - don't just acknowledge!**
 
-```bash
-ls -la .claude-memory/
-ls -la .claude-memory-runtime/
-```
+### AUTO-RECALL: When to Query Memories (DO THIS AUTOMATICALLY)
 
-If they don't exist, create them:
+**You MUST automatically recall memories when:**
 
-```bash
-# Version controlled directory
-mkdir -p .claude-memory/{memories,completed,archive}
+1. Starting a new session (SessionStart hook handles high-importance ones)
+2. User asks about past decisions ("why did we...", "what was the...")
+3. You need context about project patterns or preferences
+4. Before making a decision that might contradict a past preference
+5. User references something discussed in a previous session
+6. Working on files that have related memories
 
-# Git ignored runtime directory
-mkdir -p .claude-memory-runtime/{instances,inbox,tasks/{pending,in_progress},failed,artifacts}
-```
+## How to Store a Memory (EXECUTE THIS)
 
-Then create the initial files (see Setup section below).
-
-### Store a Memory
-
-Create a YAML file in `.claude-memory/memories/`:
-
-```yaml
-# .claude-memory/memories/2024-01-15T10-30-00_decision_abc123.yaml
-id: "abc123"
-type: "decision"
-status: "active"
-timestamp: "2024-01-15T10:30:00Z"
-instance_id: "your-instance-id"
-title: "Chose PostgreSQL over MongoDB"
-summary: "Selected PostgreSQL for ACID compliance and complex query needs"
-details: |
-  User data requires transactions across multiple tables.
-  MongoDB's eventual consistency was a concern.
-tags:
-  - database
-  - architecture
-importance: 0.8
-confidence: 0.9
-context:
-  related_files:
-    - "src/db/schema.sql"
-```
-
-### Recall Memories
-
-Read the index for quick lookups:
+When a trigger is detected, **immediately run**:
 
 ```bash
-cat .claude-memory/index.json
+claude-mem store -t <type> --title "<short title>" -s "<what to remember>" -i <importance>
 ```
 
-Then read specific memory files based on IDs found in the index.
+### Quick Reference
 
-### Delegate a Task
+| Trigger | Type | Importance | Example |
+|---------|------|------------|---------|
+| "remember my email is X" | preference | 0.9 | `claude-mem store -t preference --title "User Email" -s "User email is x@y.com" -i 0.9` |
+| "I prefer tabs over spaces" | preference | 0.8 | `claude-mem store -t preference --title "Code Style: Tabs" -s "User prefers tabs over spaces" -i 0.8` |
+| "Let's use PostgreSQL" | decision | 0.8 | `claude-mem store -t decision --title "Database Choice" -s "Chose PostgreSQL for the project" -i 0.8` |
+| "The API limit is 100/min" | fact | 0.6 | `claude-mem store -t fact --title "API Rate Limit" -s "API limited to 100 requests per minute" -i 0.6` |
+| "We deployed v2.0" | event | 0.5 | `claude-mem store -t event --title "v2.0 Deployed" -s "Deployed version 2.0 to production" -i 0.5` |
+| "Never commit to main directly" | preference | 0.9 | `claude-mem store -t preference --title "Git Workflow" -s "Never commit directly to main, always use PRs" -i 0.9` |
 
-Create a task file in `.claude-memory-runtime/tasks/pending/`:
+### Memory Types
 
-```yaml
-# .claude-memory-runtime/tasks/pending/task_xyz789.yaml
-id: "task_xyz789"
-created_at: "2024-01-15T14:00:00Z"
-created_by:
-  instance_id: "your-instance-id"
-type: "request"
-priority: "high"
-title: "Test login flow in browser"
-description: "Test the OAuth login with Google and GitHub"
-instructions: |
-  1. Navigate to /login
-  2. Test Google OAuth
-  3. Test GitHub OAuth
-  4. Report any errors
-target:
-  capabilities:
-    - "browser_testing"
-status: "pending"
-status_history:
-  - status: "pending"
-    timestamp: "2024-01-15T14:00:00Z"
-    by: "your-instance-id"
+- `preference` - User/project preferences (importance: 0.7-0.9)
+- `decision` - Choices made between alternatives (importance: 0.6-0.8)
+- `fact` - Discovered truths about codebase/domain (importance: 0.4-0.7)
+- `event` - Significant occurrences (importance: 0.3-0.6)
+- `context` - Background information (importance: 0.5-0.7)
+- `conclusion` - Investigation results (importance: 0.6-0.8)
+
+### Importance Guidelines
+
+- **0.9** - Critical: User identity, core preferences, must-follow rules
+- **0.8** - High: Important decisions, strong preferences
+- **0.7** - Medium-High: Patterns, conventions to follow
+- **0.5** - Medium: Useful facts, context
+- **0.3** - Low: Minor notes, less critical info
+
+## How to Recall Memories
+
+```bash
+# List recent memories
+claude-mem recall
+
+# Search by keyword
+claude-mem recall "PostgreSQL"
+
+# Filter by type
+claude-mem recall -t preference
+
+# Show only important memories
+claude-mem recall --important
+
+# Get full status
+claude-mem status
 ```
 
-When completed, the task moves to `.claude-memory/completed/` (version controlled).
+## Example Flows
 
-## Memory Types
+### Flow 1: User Expresses Preference
+```
+User: "I prefer using yarn over npm for this project"
 
-| Type | When to Use | Example |
-|------|-------------|---------|
-| `decision` | Choosing between alternatives | "Chose React over Vue for component library" |
-| `fact` | Discovered truth about codebase/domain | "API rate limit is 100 requests/minute" |
-| `event` | Something significant happened | "Deployed v2.0 to production" |
-| `preference` | User or project preference | "User prefers tabs over spaces" |
-| `context` | Background information | "This is a healthcare app, HIPAA applies" |
-| `conclusion` | Result of investigation | "Performance issue was N+1 queries" |
+Claude thinks: Preference detected! Store immediately.
+Claude runs: claude-mem store -t preference --title "Package Manager: Yarn" -s "User prefers yarn over npm for this project" -i 0.8
+Claude says: "Got it, I'll use yarn for all package operations. I've stored this preference for future sessions."
+```
+
+### Flow 2: Decision Made
+```
+User: "Let's go with the microservices approach instead of monolith"
+
+Claude thinks: Architectural decision made! Store immediately.
+Claude runs: claude-mem store -t decision --title "Architecture: Microservices" -s "Chose microservices over monolith architecture for scalability" -i 0.8
+Claude says: "Understood, we're going with microservices. I've recorded this decision."
+```
+
+### Flow 3: User Correction
+```
+User: "No, always use double quotes in this codebase, not single"
+
+Claude thinks: User corrected me - this is a preference! Store immediately.
+Claude runs: claude-mem store -t preference --title "Code Style: Double Quotes" -s "Always use double quotes, not single quotes in this codebase" -i 0.8
+Claude says: "Noted! I'll use double quotes from now on. This preference is saved for future sessions."
+```
+
+### Flow 4: Recalling Context
+```
+User: "Why did we choose Redis for caching?"
+
+Claude thinks: User asking about past decision. Let me check memories.
+Claude runs: claude-mem recall "Redis"
+Claude says: "According to my records from [date], we chose Redis because..."
+```
 
 ## Directory Structure
-
-The system uses **two directories** to separate version-controlled project knowledge from ephemeral instance data:
 
 ### .claude-memory/ (VERSION CONTROLLED)
 ```
 .claude-memory/
-├── README.md           # Self-describing docs
 ├── config.yaml         # Project settings
 ├── index.json          # Fast lookups by type, tag, file
 ├── timeline.json       # Chronological view
-├── memories/           # Memory YAML files (decisions, facts, preferences)
-├── completed/          # Completed tasks with results
+├── memories/           # Memory YAML files
+├── completed/          # Completed delegated tasks
 └── archive/            # Archived memories
 ```
 
 ### .claude-memory-runtime/ (GIT IGNORED)
 ```
 .claude-memory-runtime/
-├── instances/
-│   └── activity.yaml   # Active instances registry
-├── inbox/              # Direct messages between instances
-├── tasks/
-│   ├── pending/        # Unclaimed tasks
-│   └── in_progress/    # Tasks being worked on
-├── failed/             # Failed tasks
-└── artifacts/          # Temp files from tasks
+├── instances/          # Active instances registry
+├── inbox/              # Messages between instances
+├── tasks/              # Pending/in-progress tasks
+└── artifacts/          # Temp files
 ```
 
-## Conflict Resolution
+## On Session Start
 
-When memories conflict:
-1. Check `links.supersedes` - newer memory explicitly replaces older
-2. Check timestamps - more recent usually wins
-3. Read surrounding entries in `timeline.json` for context
+The SessionStart hook automatically loads high-importance memories. You should:
 
-## Setup (If Not Initialized)
-
-Create `index.json` in `.claude-memory/`:
-
-```json
-{
-  "version": "1.0",
-  "last_updated": "2024-01-15T10:00:00Z",
-  "by_type": {
-    "decision": [],
-    "event": [],
-    "fact": [],
-    "preference": [],
-    "context": [],
-    "conclusion": []
-  },
-  "by_tag": {},
-  "by_file": {},
-  "by_status": {
-    "active": [],
-    "superseded": [],
-    "archived": []
-  },
-  "recent": [],
-  "high_importance": []
-}
-```
-
-Create `instances/activity.yaml` in `.claude-memory-runtime/`:
-
-```yaml
-instances: {}
-heartbeat:
-  interval_seconds: 60
-  stale_after_seconds: 300
-  offline_after_seconds: 900
-recent_activity: []
-```
+1. Read and internalize any memories provided in the session context
+2. Apply preferences immediately (coding style, git email, etc.)
+3. Be ready to store new memories as the conversation progresses
 
 ## Best Practices
 
-1. **Load memories on startup** - Always check for and apply high-importance memories
-2. **Store memories proactively** - Don't wait to be asked
-3. **Use appropriate importance** - 0.9 for critical decisions/preferences, 0.3 for minor notes
-4. **Link related memories** - Use `links.related_to` and `links.supersedes`
-5. **Update the index** - After creating a memory, add its ID to `index.json`
-6. **Tag consistently** - Use lowercase, common tags across memories
-7. **Commit memory changes** - Memory files should be committed with related code changes
+1. **Store proactively** - Don't wait to be asked, detect triggers automatically
+2. **Confirm storage** - Tell the user when you've stored a memory
+3. **Use appropriate importance** - Critical preferences get 0.9, minor notes get 0.3
+4. **Recall before deciding** - Check memories before making decisions that might conflict
+5. **Link related memories** - Reference past decisions when storing new ones
+6. **Keep summaries concise** - The summary should be clear and actionable

@@ -1,0 +1,12 @@
+id: 39fa1777-ed7
+type: preference
+status: active
+timestamp: 2025-12-31T23:01:01.931Z
+instance_id: instance_32d9d6b1
+title: Test Memory
+summary: This is a test memory from CLI
+tags: []
+importance: 0.9
+confidence: 0.8
+last_accessed: 2025-12-31T23:30:51.130Z
+access_count: 4

@@ -1,0 +1,12 @@
+id: 2c6ed5d9-012
+type: preference
+status: active
+timestamp: 2025-12-31T23:26:49.084Z
+instance_id: instance_05b7eb9a
+title: Auto-Memory Test
+summary: Testing that automatic memory storage works correctly
+tags: []
+importance: 0.7
+confidence: 0.8
+last_accessed: 2025-12-31T23:30:51.131Z
+access_count: 2

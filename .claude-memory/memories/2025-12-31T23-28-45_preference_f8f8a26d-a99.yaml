@@ -1,0 +1,16 @@
+id: f8f8a26d-a99
+type: preference
+status: active
+timestamp: 2025-12-31T23:28:45.211Z
+instance_id: instance_5b2944b1
+title: Run Tests Before Commits
+summary: Always run tests before making any commits to ensure code quality and
+  prevent regressions
+tags:
+  - workflow
+  - testing
+  - git
+importance: 0.9
+confidence: 0.8
+last_accessed: 2025-12-31T23:30:51.132Z
+access_count: 1

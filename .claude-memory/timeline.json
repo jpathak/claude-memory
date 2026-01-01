@@ -5,7 +5,25 @@
       "memory_id": "7a36d4b7079f",
       "type": "preference",
       "summary": "Git commits should use me@jpathak.com email"
+    },
+    {
+      "timestamp": "2025-12-31T23:01:01.931Z",
+      "memory_id": "39fa1777-ed7",
+      "type": "preference",
+      "summary": "Test Memory"
+    },
+    {
+      "timestamp": "2025-12-31T23:26:49.084Z",
+      "memory_id": "2c6ed5d9-012",
+      "type": "preference",
+      "summary": "Auto-Memory Test"
+    },
+    {
+      "timestamp": "2025-12-31T23:28:45.211Z",
+      "memory_id": "f8f8a26d-a99",
+      "type": "preference",
+      "summary": "Run Tests Before Commits"
     }
   ],
-  "last_updated": "2025-12-31T20:27:29Z"
+  "last_updated": "2025-12-31T23:28:45.212Z"
 }
