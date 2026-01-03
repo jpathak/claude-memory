@@ -85,21 +85,18 @@ print('no')
 
 # If there's an important conclusion but no memory was stored, inject a reminder
 if [ "$HAS_CONCLUSION" = "yes" ] && [ "$MEMORY_STORED" = "no" ]; then
-    # Return continue with context to store the memory
+    # Block the stop to force Claude to continue and store the memory
     cat << 'EOF'
 {
-  "decision": "continue",
-  "reason": "Important conclusion detected - storing to memory",
-  "hookSpecificOutput": {
-    "additionalContext": "⚠️ MEMORY STORAGE REMINDER ⚠️\n\nYou just made an important conclusion or discovery. You MUST store this as a memory before completing.\n\nRun this command NOW:\n```bash\nclaude-mem store -t conclusion --title \"<descriptive title>\" -s \"<the key finding or conclusion>\" -i 0.7\n```\n\nThen you may complete your response."
-  }
+  "decision": "block",
+  "reason": "Important conclusion detected - please store to memory before completing"
 }
 EOF
 else
-    # No action needed, allow stop
+    # No action needed, approve the stop
     cat << 'EOF'
 {
-  "decision": "stop"
+  "decision": "approve"
 }
 EOF
 fi
