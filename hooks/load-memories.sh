@@ -13,7 +13,30 @@ if [ ! -d "$MEMORY_DIR" ]; then
     mkdir -p ".claude-memory-runtime/tasks"
     mkdir -p ".claude-memory-runtime/inbox"
     mkdir -p ".claude-memory-runtime/artifacts"
-    echo '{"memories":[],"high_importance":[]}' > "$INDEX_FILE"
+    # Create proper index structure with all required fields
+    cat > "$INDEX_FILE" << 'INDEX_EOF'
+{
+  "version": "1.0",
+  "last_updated": "",
+  "by_type": {
+    "decision": [],
+    "event": [],
+    "fact": [],
+    "preference": [],
+    "context": [],
+    "conclusion": []
+  },
+  "by_tag": {},
+  "by_file": {},
+  "by_status": {
+    "active": [],
+    "superseded": [],
+    "archived": []
+  },
+  "recent": [],
+  "high_importance": []
+}
+INDEX_EOF
 
     # Add runtime dir to gitignore if not already there
     if [ -f ".gitignore" ]; then
@@ -32,9 +55,31 @@ INIT_EOF
     exit 0
 fi
 
-# If directory exists but no index, create it
+# If directory exists but no index, create it with proper structure
 if [ ! -f "$INDEX_FILE" ]; then
-    echo '{"memories":[],"high_importance":[]}' > "$INDEX_FILE"
+    cat > "$INDEX_FILE" << 'INDEX_EOF'
+{
+  "version": "1.0",
+  "last_updated": "",
+  "by_type": {
+    "decision": [],
+    "event": [],
+    "fact": [],
+    "preference": [],
+    "context": [],
+    "conclusion": []
+  },
+  "by_tag": {},
+  "by_file": {},
+  "by_status": {
+    "active": [],
+    "superseded": [],
+    "archived": []
+  },
+  "recent": [],
+  "high_importance": []
+}
+INDEX_EOF
     echo '{}'
     exit 0
 fi

@@ -399,12 +399,36 @@ export class MemoryStore {
     if (this.index) return this.index;
 
     const indexPath = path.join(this.baseDir, INDEX_FILE);
+    const emptyIndex = this.createEmptyIndex();
+
     try {
       const content = await fs.readFile(indexPath, 'utf-8');
-      this.index = JSON.parse(content) as MemoryIndex;
+      const loadedIndex = JSON.parse(content) as Partial<MemoryIndex>;
+
+      // Merge loaded index with defaults to ensure all properties exist
+      this.index = {
+        ...emptyIndex,
+        ...loadedIndex,
+        by_type: {
+          ...emptyIndex.by_type,
+          ...(loadedIndex.by_type || {}),
+        },
+        by_tag: {
+          ...emptyIndex.by_tag,
+          ...(loadedIndex.by_tag || {}),
+        },
+        by_file: {
+          ...emptyIndex.by_file,
+          ...(loadedIndex.by_file || {}),
+        },
+        by_status: {
+          ...emptyIndex.by_status,
+          ...(loadedIndex.by_status || {}),
+        },
+      };
       return this.index;
     } catch {
-      this.index = this.createEmptyIndex();
+      this.index = emptyIndex;
       return this.index;
     }
   }
