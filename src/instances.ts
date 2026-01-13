@@ -144,13 +144,14 @@ export class InstanceManager {
    * Start automatic heartbeat
    */
   startHeartbeat(intervalMs: number = 60000): void {
-    if (this.heartbeatInterval) {
-      clearInterval(this.heartbeatInterval);
-    }
+    this.stopHeartbeat();  // Clear any existing interval
 
     this.heartbeatInterval = setInterval(() => {
       this.heartbeat().catch(console.error);
     }, intervalMs);
+
+    // Don't keep the process alive just for heartbeat
+    this.heartbeatInterval.unref();
   }
 
   /**
@@ -462,7 +463,18 @@ export class InstanceManager {
 
     try {
       const content = await fs.readFile(registryPath, 'utf-8');
-      return YAML.parse(content) as InstanceRegistry;
+      const parsed = YAML.parse(content) as InstanceRegistry | null;
+      // Handle empty or invalid YAML (returns null)
+      if (!parsed || typeof parsed !== 'object') {
+        return this.createEmptyRegistry();
+      }
+      // Ensure required fields exist
+      return {
+        ...this.createEmptyRegistry(),
+        ...parsed,
+        instances: parsed.instances || {},
+        recent_activity: parsed.recent_activity || [],
+      };
     } catch {
       return this.createEmptyRegistry();
     }

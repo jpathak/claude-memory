@@ -59,6 +59,13 @@ program
       return;
     }
 
+    // Validate type parameter
+    const validTypes = ['decision', 'event', 'fact', 'preference', 'context', 'conclusion'];
+    if (!validTypes.includes(options.type)) {
+      console.log(chalk.red(`Invalid type: ${options.type}. Must be one of: ${validTypes.join(', ')}`));
+      return;
+    }
+
     await memory.init();
 
     const input: CreateMemoryInput = {
@@ -103,7 +110,7 @@ program
       search: query,
       types: options.type ? [options.type as MemoryType] : undefined,
       tags: options.tags?.split(',').map((t: string) => t.trim()),
-      limit: parseInt(options.limit),
+      limit: parseInt(options.limit, 10),
       min_importance: options.important ? 0.7 : undefined,
     });
 
@@ -150,7 +157,7 @@ program
 
     await memory.init();
 
-    const entries = await memory.getTimeline(parseInt(options.limit));
+    const entries = await memory.getTimeline(parseInt(options.limit, 10));
 
     if (entries.length === 0) {
       console.log(chalk.yellow('No timeline entries'));
@@ -198,7 +205,7 @@ program
       target: options.capabilities ? {
         capabilities: options.capabilities.split(',').map((c: string) => c.trim()),
       } : undefined,
-      timeout_minutes: options.timeout ? parseInt(options.timeout) : undefined,
+      timeout_minutes: options.timeout ? parseInt(options.timeout, 10) : undefined,
     };
 
     const task = await memory.delegate(input);
@@ -407,7 +414,7 @@ program
 
     await memory.init();
 
-    const activity = await memory.getActivity(parseInt(options.limit));
+    const activity = await memory.getActivity(parseInt(options.limit, 10));
 
     if (activity.length === 0) {
       console.log(chalk.yellow('No activity recorded'));

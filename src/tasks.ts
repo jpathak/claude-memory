@@ -117,14 +117,14 @@ export class TaskManager {
     const pending = await this.getPendingTasks();
 
     return pending.filter(task => {
-      // If no specific target, anyone can claim
-      if (!task.target.capabilities || task.target.capabilities.length === 0) {
-        return true;
-      }
-
-      // If targeting specific instance, check if it's us
+      // If targeting specific instance, check if it's us first
       if (task.target.specific_instance) {
         return task.target.specific_instance === this.instanceId;
+      }
+
+      // If no capability requirements, anyone can claim
+      if (!task.target.capabilities || task.target.capabilities.length === 0) {
+        return true;
       }
 
       // Check if we have required capabilities
@@ -133,35 +133,55 @@ export class TaskManager {
   }
 
   /**
-   * Claim a pending task
+   * Claim a pending task with file-based locking to prevent race conditions
    */
   async claimTask(taskId: string): Promise<Task | null> {
-    const task = await this.findTask(taskId);
-    if (!task) return null;
+    // Create a lock file atomically to prevent concurrent claims
+    const lockPath = path.join(this.getStatusDir('pending'), `${taskId}.lock`);
 
-    if (task.status !== 'pending') {
-      throw new Error(`Task ${taskId} is not pending (status: ${task.status})`);
+    try {
+      // Attempt atomic lock creation - fails if lock already exists
+      await fs.writeFile(lockPath, this.instanceId, { flag: 'wx' });
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'EEXIST') {
+        throw new Error(`Task ${taskId} is being claimed by another instance`);
+      }
+      throw err;
     }
 
-    const now = new Date().toISOString();
+    try {
+      const task = await this.findTask(taskId);
+      if (!task) {
+        return null;
+      }
 
-    task.status = 'claimed';
-    task.status_history.push({
-      status: 'claimed',
-      timestamp: now,
-      by: this.instanceId,
-    });
-    task.claimed_by = {
-      instance_id: this.instanceId,
-      machine: this.machine,
-      claimed_at: now,
-    };
+      if (task.status !== 'pending') {
+        throw new Error(`Task ${taskId} is not pending (status: ${task.status})`);
+      }
 
-    // Move from pending to in_progress
-    await this.deleteTask(taskId, 'pending');
-    await this.saveTask(task, 'in_progress');
+      const now = new Date().toISOString();
 
-    return task;
+      task.status = 'claimed';
+      task.status_history.push({
+        status: 'claimed',
+        timestamp: now,
+        by: this.instanceId,
+      });
+      task.claimed_by = {
+        instance_id: this.instanceId,
+        machine: this.machine,
+        claimed_at: now,
+      };
+
+      // Move from pending to in_progress
+      await this.deleteTask(taskId, 'pending');
+      await this.saveTask(task, 'in_progress');
+
+      return task;
+    } finally {
+      // Always clean up the lock file
+      await fs.unlink(lockPath).catch(() => {});
+    }
   }
 
   /**

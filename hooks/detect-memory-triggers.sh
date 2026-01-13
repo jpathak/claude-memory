@@ -16,8 +16,8 @@ except:
     print('')
 " 2>/dev/null)
 
-# Convert to lowercase for matching
-USER_MESSAGE_LOWER=$(echo "$USER_MESSAGE" | tr '[:upper:]' '[:lower:]')
+# Convert to lowercase for matching (using printf to avoid shell injection)
+USER_MESSAGE_LOWER=$(printf '%s' "$USER_MESSAGE" | tr '[:upper:]' '[:lower:]')
 
 # Define trigger patterns for explicit memory requests
 EXPLICIT_TRIGGERS=(
@@ -63,7 +63,7 @@ TRIGGER_FOUND=""
 TRIGGER_TYPE=""
 
 for trigger in "${EXPLICIT_TRIGGERS[@]}"; do
-    if echo "$USER_MESSAGE_LOWER" | grep -qi "$trigger"; then
+    if printf '%s' "$USER_MESSAGE_LOWER" | grep -qi "$trigger"; then
         TRIGGER_FOUND="$trigger"
         TRIGGER_TYPE="explicit"
         break
@@ -73,7 +73,7 @@ done
 # If no explicit trigger, check for preference triggers
 if [ -z "$TRIGGER_FOUND" ]; then
     for trigger in "${PREFERENCE_TRIGGERS[@]}"; do
-        if echo "$USER_MESSAGE_LOWER" | grep -qiE "$trigger"; then
+        if printf '%s' "$USER_MESSAGE_LOWER" | grep -qiE "$trigger"; then
             TRIGGER_FOUND="$trigger"
             TRIGGER_TYPE="preference"
             break
@@ -84,10 +84,10 @@ fi
 # If a trigger was found, inject mandatory storage instructions
 if [ -n "$TRIGGER_FOUND" ]; then
     # Determine the memory type based on trigger
-    if echo "$TRIGGER_FOUND" | grep -qiE "prefer|like|always|never"; then
+    if printf '%s' "$TRIGGER_FOUND" | grep -qiE "prefer|like|always|never"; then
         MEM_TYPE="preference"
         IMPORTANCE="0.8"
-    elif echo "$TRIGGER_FOUND" | grep -qiE "decided|decision|go with|use"; then
+    elif printf '%s' "$TRIGGER_FOUND" | grep -qiE "decided|decision|go with|use"; then
         MEM_TYPE="decision"
         IMPORTANCE="0.7"
     else

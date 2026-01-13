@@ -162,8 +162,8 @@ export class MemoryStore {
       context: input.context,
       links: input.links,
       tags: input.tags || [],
-      importance: input.importance ?? 0.5,
-      confidence: input.confidence ?? 0.8,
+      importance: Math.max(0, Math.min(1, input.importance ?? 0.5)),
+      confidence: Math.max(0, Math.min(1, input.confidence ?? 0.8)),
       expires_at: input.expires_at,
       last_accessed: timestamp,
       access_count: 0,
@@ -345,11 +345,18 @@ export class MemoryStore {
 
     await fs.writeFile(memoryPath, YAML.stringify(memory), 'utf-8');
 
-    // Update index
+    // Update index - only move between status arrays, keep in by_type for include_superseded queries
     const index = await this.loadIndex();
-    this.removeFromIndexArrays(index, memoryId);
+    // Remove from all status arrays (including 'active')
+    for (const status of Object.keys(index.by_status) as MemoryStatus[]) {
+      index.by_status[status] = index.by_status[status].filter(id => id !== memoryId);
+    }
+    // Add to superseded status
     index.by_status['superseded'] = index.by_status['superseded'] || [];
     index.by_status['superseded'].push(memoryId);
+    // Remove from recent and high_importance
+    index.recent = index.recent.filter(id => id !== memoryId);
+    index.high_importance = index.high_importance.filter(id => id !== memoryId);
     await this.saveIndex(index);
   }
 
@@ -484,10 +491,17 @@ export class MemoryStore {
   }
 
   private async findMemoryFile(id: string): Promise<string | null> {
+    // Validate ID format (should be 12 characters from UUID, may include hyphen)
+    // UUID format is xxxxxxxx-xxxx-..., so slice(0,12) gives xxxxxxxx-xxx
+    if (!/^[a-f0-9-]{8,12}$/i.test(id)) {
+      return null;
+    }
+
     const memoriesDir = path.join(this.baseDir, MEMORIES_SUBDIR);
     try {
       const files = await fs.readdir(memoriesDir);
-      const match = files.find(f => f.includes(id) && f.endsWith('.yaml'));
+      // Use more precise matching: ID should be at the end before .yaml
+      const match = files.find(f => f.endsWith(`_${id}.yaml`) || f.endsWith(`-${id}.yaml`));
       return match || null;
     } catch {
       return null;
@@ -544,14 +558,20 @@ export class MemoryStore {
     index.last_updated = new Date().toISOString();
     this.index = index;
     const indexPath = path.join(this.baseDir, INDEX_FILE);
-    await fs.writeFile(indexPath, JSON.stringify(index, null, 2), 'utf-8');
+    // Use atomic write: write to temp file, then rename
+    const tempPath = `${indexPath}.tmp.${process.pid}`;
+    await fs.writeFile(tempPath, JSON.stringify(index, null, 2), 'utf-8');
+    await fs.rename(tempPath, indexPath);
   }
 
   private async saveTimeline(timeline: Timeline): Promise<void> {
     timeline.last_updated = new Date().toISOString();
     this.timeline = timeline;
     const timelinePath = path.join(this.baseDir, TIMELINE_FILE);
-    await fs.writeFile(timelinePath, JSON.stringify(timeline, null, 2), 'utf-8');
+    // Use atomic write: write to temp file, then rename
+    const tempPath = `${timelinePath}.tmp.${process.pid}`;
+    await fs.writeFile(tempPath, JSON.stringify(timeline, null, 2), 'utf-8');
+    await fs.rename(tempPath, timelinePath);
   }
 
   private async saveConfig(config: MemoryConfig): Promise<void> {
@@ -563,7 +583,10 @@ export class MemoryStore {
   private async addToIndex(memory: Memory): Promise<void> {
     const index = await this.loadIndex();
 
-    // Add to by_type
+    // Add to by_type (handle unknown types defensively)
+    if (!index.by_type[memory.type]) {
+      index.by_type[memory.type] = [];
+    }
     index.by_type[memory.type].push(memory.id);
 
     // Add to by_tag
@@ -580,7 +603,10 @@ export class MemoryStore {
       }
     }
 
-    // Add to by_status
+    // Add to by_status (handle unknown statuses defensively)
+    if (!index.by_status[memory.status]) {
+      index.by_status[memory.status] = [];
+    }
     index.by_status[memory.status].push(memory.id);
 
     // Add to recent (keep last 50)
